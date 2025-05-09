@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
-import { execute_select, execute_transaction } from '@/lib/data';
+import { execute_select, execute_transaction, get_ads, update_ad_status } from '@/lib/data';
 
 // GET: Fetch all ads with mock performance metrics
 export async function GET() {
   try {
-    const ads = await execute_select('SELECT ad_name, active, budget FROM ads');
+    console.log('Fetching ads');
+    const ads = await get_ads();
     // Add mock performance metrics
+    console.log(ads);
+    console.log('Adding mock performance metrics');
     const adsWithMetrics = ads.map(ad => ({
       ...ad,
       spent: Math.floor(Math.random() * 1000) + 100, // mock spent
@@ -23,15 +26,12 @@ export async function GET() {
 // PATCH: Update ad status or budget
 export async function PATCH(req) {
   try {
-    const { ad_name, active, budget } = await req.json();
+    const { ad_name, active } = await req.json();
     if (typeof ad_name !== 'string') {
       return NextResponse.json({ error: 'ad_name is required' }, { status: 400 });
     }
     if (typeof active === 'boolean') {
-      await execute_transaction('UPDATE ads SET active = $1 WHERE ad_name = $2', [active, ad_name]);
-    }
-    if (typeof budget === 'number') {
-      await execute_transaction('UPDATE ads SET budget = $1 WHERE ad_name = $2', [budget, ad_name]);
+      await update_ad_status(ad_name, active);
     }
     return NextResponse.json({ success: true });
   } catch (error) {
