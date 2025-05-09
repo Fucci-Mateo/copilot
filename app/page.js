@@ -36,6 +36,32 @@ export default function Dashboard() {
     fetchAds();
   }, []);
 
+  // n8n chat widget loader
+  useEffect(() => {
+    // Add the stylesheet
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css';
+    document.head.appendChild(link);
+
+    // Add the script
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.innerHTML = `
+      import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+      createChat({
+        webhookUrl: 'https://hackaton2ed.app.n8n.cloud/webhook/1c0d08f0-abd0-4bdc-beef-370c27aae1a0/chat'
+      });
+    `;
+    document.body.appendChild(script);
+
+    // Cleanup
+    return () => {
+      document.head.removeChild(link);
+      document.body.removeChild(script);
+    };
+  }, []);
+
   // Fixed numbers for the cards
   const totalSpent = 1234;
   const totalRevenue = 5678;
