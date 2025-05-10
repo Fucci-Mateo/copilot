@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { BellIcon } from "lucide-react";
 
 function InsightCard({ title, value }) {
   return (
@@ -18,10 +20,69 @@ function InsightCard({ title, value }) {
   );
 }
 
+// Mock suggestions data
+const mockSuggestions = [
+  {
+    id: 1,
+    title: "Budget Optimization",
+    message: "Meta Campaign “W03-25 | Statics | Ugly Ad” hitting $1.5 CPA ",
+    type: "optimization",
+    suggestedAction: "Increase budget by 25%"
+  },
+  {
+    id: 2,
+    title: "Performance Alert",
+    message: "TikTok Campaign: ROAS dropped 30% in last 3 days",
+    type: "alert",
+    suggestedAction: "Reduce budget by 25%"
+  },
+  {
+    id: 3,
+    title: "Opportunity",
+    message: "New audience segment identified with 2.5x higher conversion rate",
+    type: "opportunity",
+    suggestedAction: "Create new campaign targeting this segment"
+  },
+];
+
+function SuggestionCard({ suggestion, onAccept, onReject }) {
+  return (
+    <Card className="mb-2">
+      <CardHeader className="p-4">
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-sm font-medium">{suggestion.title}</CardTitle>
+          <span className="text-xs px-2 py-1 rounded-full bg-muted">
+            {suggestion.type}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <p className="text-sm text-muted-foreground mb-3">{suggestion.message}</p>
+        <div className="flex items-center justify-between border-t pt-3">
+          <div className="text-sm font-medium text-primary flex items-center gap-2">
+            <span>Suggested Action:</span>
+            <span className="text-foreground">{suggestion.suggestedAction}</span>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onReject(suggestion.id)}>
+              Dismiss
+            </Button>
+            <Button size="sm" onClick={() => onAccept(suggestion.id)}>
+              Apply
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState(mockSuggestions);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     async function fetchAds() {
@@ -96,9 +157,56 @@ export default function Dashboard() {
     setSaving(false);
   };
 
+  const handleAcceptSuggestion = (id) => {
+    // Mock implementation - in real app, this would apply the suggestion
+    console.log(`Accepted suggestion ${id}`);
+    setSuggestions(suggestions.filter(s => s.id !== id));
+  };
+
+  const handleRejectSuggestion = (id) => {
+    // Mock implementation - in real app, this would dismiss the suggestion
+    console.log(`Rejected suggestion ${id}`);
+    setSuggestions(suggestions.filter(s => s.id !== id));
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Meta Ads Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Meta Ads Dashboard</h1>
+        <Dialog open={showSuggestions} onOpenChange={setShowSuggestions}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon" className="relative">
+              <BellIcon className="h-5 w-5" />
+              {suggestions.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {suggestions.length}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
+            <DialogHeader className="pb-2 flex-shrink-0">
+              <DialogTitle>Suggestions</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2 overflow-y-auto flex-1 min-h-0">
+              {suggestions.length === 0 ? (
+                <p className="text-center text-muted-foreground">No suggestions available</p>
+              ) : (
+                <div className="space-y-2 pr-2">
+                  {suggestions.map((suggestion) => (
+                    <SuggestionCard
+                      key={suggestion.id}
+                      suggestion={suggestion}
+                      onAccept={handleAcceptSuggestion}
+                      onReject={handleRejectSuggestion}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       {/* Insight Cards */}
       <div className="flex gap-4 mb-8 flex-wrap">
         <InsightCard title="Total Spent" value={`$${totalSpent}`} />
