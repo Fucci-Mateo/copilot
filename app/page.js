@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BellIcon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import Image from "next/image";
 
 function InsightCard({ title, value }) {
   return (
@@ -25,7 +27,7 @@ const mockSuggestions = [
   {
     id: 1,
     title: "Budget Optimization",
-    message: "Meta Campaign “W03-25 | Statics | Ugly Ad” hitting $1.5 CPA ",
+    message: "Meta Campaign “W03-25 | Statics | Ugly Ad” hitting $1.5 CPA",
     type: "optimization",
     suggestedAction: "Increase budget by 25%"
   },
@@ -77,12 +79,37 @@ function SuggestionCard({ suggestion, onAccept, onReject }) {
   );
 }
 
+// Mock platform data
+const platforms = [
+  {
+    id: "meta",
+    name: "Meta",
+    logo: "/platforms/meta.png"
+  },
+  {
+    id: "google",
+    name: "Google",
+    logo: "/platforms/google.png"
+  },
+  {
+    id: "tiktok",
+    name: "TikTok",
+    logo: "/platforms/tiktok.png"
+  },
+  {
+    id: "pinterest",
+    name: "Pinterest",
+    logo: "/platforms/pinterest.png"
+  }
+];
+
 export default function Dashboard() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState(mockSuggestions);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activePlatform, setActivePlatform] = useState("meta");
 
   useEffect(() => {
     async function fetchAds() {
@@ -148,19 +175,95 @@ export default function Dashboard() {
   };
 
   const handleBudgetBlur = async (ad_name, value) => {
-    setSaving(true);
-    await fetch("/api/ads", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ad_name, budget: Number(value) }),
-    });
-    setSaving(false);
+    try {
+      setSaving(true);
+      console.log('Updating budget for:', ad_name, 'to:', value);
+      
+      const response = await fetch("/api/ads/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_budget",
+          ad_name: ad_name,
+          budget: Number(value)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update budget');
+      }
+
+      // Refresh the ads data
+      const res = await fetch("/api/ads");
+      const data = await res.json();
+      setAds(data.ads || []);
+      
+      console.log('Budget updated successfully');
+    } catch (error) {
+      console.error('Error updating budget:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAcceptSuggestion = (id) => {
-    // Mock implementation - in real app, this would apply the suggestion
-    console.log(`Accepted suggestion ${id}`);
-    setSuggestions(suggestions.filter(s => s.id !== id));
+  const handleAcceptSuggestion = async (id) => {
+    try {
+      const suggestion = suggestions.find(s => s.id === id);
+      if (!suggestion) return;
+
+      let response;
+      switch (id) {
+        case 1:
+          // Increase budget by 25% for Meta Campaign
+          response = await fetch("/api/ads/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "increase_budget",
+              percentage: 25,
+              ad_name_pattern: "Meta Campaign \"W03-25 | Statics | Ugly Ad\" hitting $1.5 CPA"
+            }),
+          });
+          break;
+        case 2:
+          // Reduce budget by 25% for TikTok Campaign
+          response = await fetch("/api/ads/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "decrease_budget",
+              percentage: 25,
+              ad_name_pattern: "TikTok Campaign: ROAS dropped 30% in last 3 days"
+            }),
+          });
+          break;
+        case 3:
+          // Increase budget for all matching ads
+          response = await fetch("/api/ads/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "increase_budget",
+              percentage: 25,
+              ad_name_pattern: "New audience segment identified with 2.5x higher conversion rate"
+            }),
+          });
+          break;
+      }
+
+      if (response && response.ok) {
+        // Remove the suggestion after successful update
+        setSuggestions(suggestions.filter(s => s.id !== id));
+        // Refresh the ads data
+        const res = await fetch("/api/ads");
+        const data = await res.json();
+        setAds(data.ads || []);
+      } else {
+        console.error('Failed to apply suggestion');
+      }
+    } catch (error) {
+      console.error('Error applying suggestion:', error);
+    }
   };
 
   const handleRejectSuggestion = (id) => {
@@ -172,7 +275,7 @@ export default function Dashboard() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Meta Ads Dashboard</h1>
+        <h1 className="text-3xl font-bold">Ads Dashboard</h1>
         <Dialog open={showSuggestions} onOpenChange={setShowSuggestions}>
           <DialogTrigger asChild>
             <Button variant="outline" size="icon" className="relative">
@@ -207,12 +310,36 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       </div>
+
       {/* Insight Cards */}
-      <div className="flex gap-4 mb-8 flex-wrap">
+      <div className="flex gap-4 mb-4 flex-wrap">
         <InsightCard title="Total Spent" value={`$${totalSpent}`} />
         <InsightCard title="Total Revenue" value={`$${totalRevenue}`} />
         <InsightCard title="Avg. ROAS" value={avgROAS} />
       </div>
+
+      {/* Platform Tabs */}
+      <Tabs defaultValue="meta" className="mb-6" onValueChange={setActivePlatform}>
+        <TabsList className="grid w-full grid-cols-4">
+          {platforms.map((platform) => (
+            <TabsTrigger
+              key={platform.id}
+              value={platform.id}
+              className="flex items-center gap-2"
+            >
+              <Image
+                src={platform.logo}
+                alt={`${platform.name} logo`}
+                width={20}
+                height={20}
+                className="object-contain"
+              />
+              {platform.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       {/* Main Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full border rounded-lg bg-background">
